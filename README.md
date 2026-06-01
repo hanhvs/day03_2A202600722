@@ -3,7 +3,7 @@
 Welcome to Phase 3 of the Agentic AI course! This lab focuses on moving from a simple LLM Chatbot to a sophisticated **ReAct Agent** with industry-standard monitoring.
 
 **Team v1 product:** [PriceCheck Agent](docs/PROJECT_OVERVIEW.md) — ước lượng giá bán lại đồ cũ (mock tools + ReAct).  
-📄 **[Project Overview](docs/PROJECT_OVERVIEW.md)** · **[V1 Task Plan (Colab)](docs/V1_TASK_PLAN_COLAB.md)**
+📄 **[Project Overview](docs/PROJECT_OVERVIEW.md)**
 
 ## 🚀 Getting Started
 

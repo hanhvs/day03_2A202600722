@@ -8,7 +8,7 @@
 | **Khóa học** | Agentic AI — Phase 3 (Lab 3, Industry Edition) |
 | **Mục tiêu học thuật** | So sánh **LLM chatbot một lần** với **ReAct agent** (Thought → Action → Observation) có tool và telemetry |
 | **Sản phẩm team v1** | **PriceCheck Agent** — ước lượng giá bán lại đồ cũ tại VN từ tên SP + mô tả tình trạng |
-| **Team** | @hanhvs · @0infinitive0 |
+| **Team** | Vương Sỹ Hạnh (2A202600722) · Nguyễn Hữu Đức (2A202600683) · Nguyễn Duy Hưng (2A202600578) |
 | **Môi trường làm việc** | Local + Google Colab (`notebooks/Lab3_v1_PriceAgent.ipynb`) |
 
 Dự án được thiết kế như **production prototype**: tách LLM provider, log JSON có cấu trúc, và extension point cho tools — không chỉ “script chạy một lần”.
@@ -124,8 +124,7 @@ Day-3-Lab-Chatbot-vs-react-agent/
 │   ├── test_action_parser.py
 │   └── test_local.py
 ├── docs/
-│   ├── PROJECT_OVERVIEW.md       # File này
-│   └── V1_TASK_PLAN_COLAB.md       # Chia task team v1
+│   └── PROJECT_OVERVIEW.md       # File này
 ├── report/                       # Template báo cáo nhóm / cá nhân
 ├── run_hanhvs_demo.py            # Demo local: chatbot + agent
 ├── data/
@@ -250,7 +249,6 @@ Xem `README.md` — tải Phi-3 GGUF vào `models/`, set `DEFAULT_PROVIDER=local
 | Tài liệu | Nội dung |
 |----------|----------|
 | [README.md](../README.md) | Setup nhanh, mục tiêu lab gốc |
-| [V1_TASK_PLAN_COLAB.md](./V1_TASK_PLAN_COLAB.md) | Chia task @hanhvs / @0infinitive0, DoD v1 |
 | [SCORING.md](../SCORING.md) | Rubric chấm điểm (nhóm + cá nhân) |
 | [EVALUATION.md](../EVALUATION.md) | Metrics: token, latency, loop count |
 | [INSTRUCTOR_GUIDE.md](../INSTRUCTOR_GUIDE.md) | Timeline 4h, tips giảng viên |
@@ -292,4 +290,4 @@ Xem `README.md` — tải Phi-3 GGUF vào `models/`, set `DEFAULT_PROVIDER=local
 
 ---
 
-*Cập nhật: 2026-06-01 — PriceCheck Agent v1, team @hanhvs · @0infinitive0*
+*Cập nhật: 2026-06-01 — PriceCheck Agent v1, team PriceCheck (3 thành viên)*
