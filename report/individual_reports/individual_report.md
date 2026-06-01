@@ -6,7 +6,7 @@
 
 ---
 
-## I. Technical Contribution
+## I. Technical Contribution (15 Points)
 
 *Đóng góp code và tài liệu cho PriceCheck Agent (nhóm PriceCheck Team).*
 
@@ -41,7 +41,7 @@ tracker.track_request(provider, model, usage, latency_ms)
 
 ---
 
-## II. Debugging Case Study
+## II. Debugging Case Study (10 Points)
 
 - **Problem Description**: Agent không thực thi tool khi LLM trả `Action: normalize_product("iPhone 13 128GB")` bên trong block markdown ` ```json ... ``` `. UI/SSE không có event `tool_start`; log `has_action: false`.
 
@@ -60,7 +60,7 @@ tracker.track_request(provider, model, usage, latency_ms)
 
 ---
 
-## III. Personal Insights: Chatbot vs ReAct
+## III. Personal Insights: Chatbot vs ReAct (10 Points)
 
 1. **Reasoning**: `Thought` buộc model nêu kế hoạch (vd. “cần giá tham chiếu rồi đánh giá tình trạng”). Chatbot trả lời một khối — nhanh nhưng khi GV hỏi “số đó từ đâu?” khó trả lời bằng trace.
 
@@ -70,7 +70,7 @@ tracker.track_request(provider, model, usage, latency_ms)
 
 ---
 
-## IV. Future Improvements
+## IV. Future Improvements (5 Points)
 
 - **Scalability**: Tách worker cho `search_product_online`; queue async cho API SSE thay vì block trong `run_stream`.
 - **Safety**: Supervisor LLM duyệt `Final Answer`; rate limit API; mở rộng guardrail intent.
