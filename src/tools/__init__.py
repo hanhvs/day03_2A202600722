@@ -24,7 +24,7 @@ TOOL_SPECS = [
     {
         "name": "score_condition",
         "description": (
-            "[@0infinitive0] Đánh giá tình trạng từ mô tả text. Input: condition_text (str). "
+            "Đánh giá tình trạng từ mô tả text. Input: condition_text (str). "
             "Trả về tier (like_new/good/fair/poor), multiplier, risk_flags."
         ),
     },

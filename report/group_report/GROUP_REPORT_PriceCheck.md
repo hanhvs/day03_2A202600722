@@ -152,7 +152,7 @@ Factory: `get_llm_from_env()` trong `src/core/llm_factory.py` — dùng chung Co
 | **Input** | *"pin 88%, vỏ đẹp nhưng màn lỗi nhỏ"* |
 | **Observation** | Keyword rule chọn `fair` thay vì `good` do ưu tiên từ khóa tiêu cực |
 | **Root Cause** | Rule-based scoring, không có trọng số theo mức độ |
-| **Hướng v2** | Thang điểm từng chiềố (pin, màn, vỏ) rồi aggregate |
+| **Hướng v2** | Thang điểm từng components (pin, màn, vỏ) rồi aggregate |
 
 ---
 
