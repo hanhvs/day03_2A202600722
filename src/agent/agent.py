@@ -1,9 +1,21 @@
 import json
 from typing import Any, Dict, Generator, List, Optional
 
-from src.agent.action_parser import parse_action, parse_final_answer, parse_thought
+from src.agent.action_parser import (
+    parse_action,
+    parse_final_answer,
+    parse_thought,
+    sanitize_llm_output,
+)
+from src.agent.guardrails import (
+    ALLOWED_TOOLS,
+    is_off_topic,
+    off_topic_message,
+    validate_tool_name,
+)
 from src.core.llm_provider import LLMProvider
 from src.telemetry.logger import logger
+from src.telemetry.metrics import tracker
 from src.tools.openai_web_search import search_product_online
 from src.tools.product_catalog import (
     format_observation,
@@ -33,21 +45,29 @@ class ReActAgent:
         tools: List[Dict[str, Any]],
         max_steps: int = 8,
         persist_catalog_updates: bool = True,
+        tool_retry_limit: int = 1,
     ):
         self.llm = llm
         self.tools = tools
         self.max_steps = max_steps
         self.persist_catalog_updates = persist_catalog_updates
+        self.tool_retry_limit = tool_retry_limit
         self.history: List[Dict[str, Any]] = []
+        self.agent_version = "v2"
 
     def get_system_prompt(self) -> str:
         tool_lines = "\n".join(
             f"  - {t['name']}: {t['description']}" for t in self.tools
         )
-        return f"""Bạn là PriceCheck Agent — tư vấn giá bán lại đồ cũ tại Việt Nam.
+        return f"""Bạn là PriceCheck Agent v2 — tư vấn giá bán lại đồ cũ tại Việt Nam.
 
 Công cụ (gọi tuần tự khi cần):
 {tool_lines}
+
+Quy tắc v2:
+- KHÔNG bọc Action trong markdown ``` — chỉ một dòng Action: tool_name("...")
+- Kiểm tra tên tool và tham số trước khi gọi; dùng đúng chuỗi trong dấu ngoặc kép.
+- Câu hỏi không liên quan giá đồ cũ → trả lời Final Answer từ chối lịch sự.
 
 Quy trình gợi ý:
 1. normalize_product — nhận diện sản phẩm trong catalog nội bộ
@@ -90,13 +110,24 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
     ) -> Generator[Dict[str, Any], None, None]:
         """Yield step events for SSE / live UI."""
         self.history = []
-        logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
+        logger.log_event(
+            "AGENT_START",
+            {"input": user_input, "model": self.llm.model_name, "version": self.agent_version},
+        )
 
         yield {
             "type": "agent_start",
             "model": self.llm.model_name,
+            "version": self.agent_version,
             "tools": [t["name"] for t in self.tools],
         }
+
+        if is_off_topic(user_input):
+            msg = off_topic_message()
+            logger.log_event("GUARDRAIL_OFF_TOPIC", {"input": user_input})
+            yield {"type": "final_answer", "step": 0, "text": msg}
+            yield {"type": "done", "status": "off_topic"}
+            return
 
         system_prompt = self.get_system_prompt()
         conversation = ""
@@ -123,9 +154,19 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
                 content = result.get("content") or ""
                 last_content = content
 
-                thought = parse_thought(content)
-                final = parse_final_answer(content)
-                action = parse_action(content)
+                usage = result.get("usage") or {}
+                if usage:
+                    tracker.track_request(
+                        provider=result.get("provider", "unknown"),
+                        model=self.llm.model_name,
+                        usage=usage,
+                        latency_ms=result.get("latency_ms", 0),
+                    )
+
+                parsed_content = sanitize_llm_output(content)
+                thought = parse_thought(parsed_content)
+                final = parse_final_answer(parsed_content)
+                action = parse_action(parsed_content)
 
                 yield {
                     "type": "llm_done",
@@ -155,22 +196,39 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
                     yield {"type": "final_answer", "step": steps, "text": final}
                     catalog_update = self._maybe_update_catalog(user_input, final)
                     yield {"type": "catalog_update", "data": catalog_update}
+                    summary = tracker.session_summary()
                     logger.log_event(
                         "AGENT_END",
-                        {"steps": steps + 1, "status": "final_answer", "catalog_update": catalog_update},
+                        {
+                            "steps": steps + 1,
+                            "status": "final_answer",
+                            "catalog_update": catalog_update,
+                            "metrics": summary,
+                        },
                     )
+                    yield {"type": "metrics_summary", "data": summary}
                     yield {"type": "done", "status": "final_answer"}
                     return
 
                 if action:
                     tool_name, args_str = action
+                    if not validate_tool_name(tool_name):
+                        observation = json.dumps(
+                            {"error": f"Tool không hợp lệ: {tool_name}", "allowed": list(ALLOWED_TOOLS)},
+                            ensure_ascii=False,
+                        )
+                        self.history[-1]["observation"] = observation
+                        conversation += f"{content.strip()}\nObservation: {observation}\n"
+                        steps += 1
+                        continue
+
                     yield {
                         "type": "tool_start",
                         "step": steps,
                         "tool": tool_name,
                         "args": args_str,
                     }
-                    observation = self._execute_tool(tool_name, args_str)
+                    observation = self._execute_tool_with_retry(tool_name, args_str)
                     self.history[-1]["observation"] = observation
                     yield {
                         "type": "tool_result",
@@ -215,6 +273,22 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
         except Exception as e:
             logger.log_event("CATALOG_UPDATE_ERROR", {"error": str(e)})
             return {"saved": False, "error": str(e)}
+
+    def _execute_tool_with_retry(self, tool_name: str, args_str: str) -> str:
+        observation = self._execute_tool(tool_name, args_str)
+        for attempt in range(self.tool_retry_limit):
+            try:
+                data = json.loads(observation)
+            except json.JSONDecodeError:
+                break
+            if not data.get("error") and not data.get("stub"):
+                break
+            logger.log_event(
+                "TOOL_RETRY",
+                {"tool": tool_name, "attempt": attempt + 1, "reason": data.get("error")},
+            )
+            observation = self._execute_tool(tool_name, args_str)
+        return observation
 
     def _execute_tool(self, tool_name: str, args_str: str) -> str:
         """Execute tools. @hanhvs: catalog tools; partner tools delegated when present."""

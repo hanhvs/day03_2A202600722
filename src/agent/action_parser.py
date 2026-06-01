@@ -15,6 +15,17 @@ THOUGHT_PATTERN = re.compile(
     r"Thought:\s*(.+?)(?=Action:|Final Answer:|$)",
     re.IGNORECASE | re.DOTALL,
 )
+MARKDOWN_FENCE = re.compile(r"```(?:json|python)?\s*([\s\S]*?)```", re.IGNORECASE)
+
+
+def sanitize_llm_output(text: str) -> str:
+    """v2: unwrap markdown fences so Action: inside ``` can be parsed."""
+    if not text:
+        return text
+    if "Action:" in text and "```" not in text:
+        return text
+    stripped = MARKDOWN_FENCE.sub(r"\1", text).strip()
+    return stripped if stripped else text
 
 
 def parse_final_answer(text: str) -> Optional[str]:
@@ -26,6 +37,7 @@ def parse_final_answer(text: str) -> Optional[str]:
 
 def parse_action(text: str) -> Optional[Tuple[str, str]]:
     """Return (tool_name, raw_args_string) or None."""
+    text = sanitize_llm_output(text)
     match = ACTION_PATTERN.search(text)
     if not match:
         return None
