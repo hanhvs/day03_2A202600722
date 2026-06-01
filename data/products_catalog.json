@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "description": "Mock catalog PriceCheck — chỉnh sửa thủ công hoặc tự cập nhật sau Final Answer của agent",
-  "updated_at": "2026-06-01T08:51:47.167297+00:00",
+  "updated_at": "2026-06-01T09:02:14.489949+00:00",
   "products": [
     {
       "id": "iphone-13-128gb",
@@ -35,16 +35,38 @@
           "listings_avg_vnd": null,
           "user_query": "Iphone 13 128GB, 88% giá thị trường giờ là bao nhiêu",
           "final_answer_excerpt": "Dựa trên tình trạng pin 88% của iPhone 13 128GB, giá bán lại trên thị trường hiện nay dao động từ 10 triệu VND đến 11 triệu VND. Bạn nên đăng bán trong khoảng giá này. Lưu ý rằng sản phẩm có thể bị ảnh hưởng bởi độ hao mòn của pin."
+        },
+        {
+          "recorded_at": "2026-06-01T08:59:23.311311+00:00",
+          "source": "agent_final_answer",
+          "tier": null,
+          "estimated_min_vnd": 6500000,
+          "estimated_max_vnd": 7500000,
+          "suggested_vnd": 7500000,
+          "listings_avg_vnd": null,
+          "user_query": "iphone 17 promax , 128gb, pin 88%, màu cam, giá thị trường có giá bao nhiêu? rơi nhiều, chỉ xước chứ không vỡ",
+          "final_answer_excerpt": "Mặc dù iPhone 17 Pro Max chưa có giá tham chiếu tử tế trong catalog, nhưng dựa trên tình trạng pin 88%, rơi nhiều nhưng chỉ xước, không vỡ, sản phẩm có thể được định giá khoảng 6.5 - 7.5 triệu VND trên thị trường hiện nay. Nếu đăng bán, bạn có thể thay đổi giá phù hợp trong biên độ này và lưu ý rủi ro về các hư hỏng vật lý có thể ảnh hưởng đến giá trị bán."
+        },
+        {
+          "recorded_at": "2026-06-01T09:02:14.489934+00:00",
+          "source": "agent_final_answer",
+          "tier": null,
+          "estimated_min_vnd": null,
+          "estimated_max_vnd": null,
+          "suggested_vnd": 30990000,
+          "listings_avg_vnd": null,
+          "user_query": "Iphone 17 pro max, màu vàng cam, like new, pin 98%, có giá bao nhiêu?",
+          "final_answer_excerpt": "Giá của iPhone 17 Pro Max màu vàng cam, like new, với pin 98% dao động từ khoảng 30.99 triệu đến 35.79 triệu đồng. Giá này dựa trên các mức giá tham khảo từ các cửa hàng uy tín và chợ cá nhân ở Việt Nam."
         }
       ],
       "last_market_summary": {
-        "updated_at": "2026-06-01T08:51:47.167282+00:00",
+        "updated_at": "2026-06-01T09:02:14.489934+00:00",
         "tier": null,
         "estimated_min_vnd": null,
         "estimated_max_vnd": null,
-        "suggested_vnd": 10000000,
+        "suggested_vnd": 30990000,
         "listings_avg_vnd": null,
-        "observation_count": 2
+        "observation_count": 4
       }
     },
     {

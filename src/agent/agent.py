@@ -4,6 +4,7 @@ from typing import Any, Dict, Generator, List, Optional
 from src.agent.action_parser import parse_action, parse_final_answer, parse_thought
 from src.core.llm_provider import LLMProvider
 from src.telemetry.logger import logger
+from src.tools.openai_web_search import search_product_online
 from src.tools.product_catalog import (
     format_observation,
     get_reference_price,
@@ -30,7 +31,7 @@ class ReActAgent:
         self,
         llm: LLMProvider,
         tools: List[Dict[str, Any]],
-        max_steps: int = 6,
+        max_steps: int = 8,
         persist_catalog_updates: bool = True,
     ):
         self.llm = llm
@@ -49,11 +50,10 @@ Công cụ (gọi tuần tự khi cần):
 {tool_lines}
 
 Quy trình gợi ý:
-1. normalize_product — nhận diện sản phẩm
-2. get_reference_price — giá tham chiếu mới (VND)
-3. score_condition — đánh giá tình trạng từ mô tả user
-4. search_comparable_listings — giá tin tương đương
-5. Final Answer — khoảng giá (triệu VND), gợi ý đăng, lưu ý rủi ro
+1. normalize_product — nhận diện sản phẩm trong catalog nội bộ
+2. Nếu matched=false hoặc catalog_miss → search_product_online (OpenAI web search, bắt buộc)
+3. Nếu matched=true → get_reference_price → score_condition → search_comparable_listings
+4. Final Answer — khoảng giá (triệu VND), nêu nguồn (catalog hoặc web search)
 
 Định dạng BẮT BUỘC (không dùng markdown code block):
 Thought: <suy luận ngắn>
@@ -69,6 +69,7 @@ Action: normalize_product("iPhone 13 128GB")
 Action: get_reference_price("iPhone 13 128GB", storage_gb=128)
 Action: score_condition("pin 88%, màn ok, đủ hộp")
 Action: search_comparable_listings("iPhone 13 128GB", tier="good")
+Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
 """
 
     def run(self, user_input: str) -> str:
@@ -242,6 +243,13 @@ Action: search_comparable_listings("iPhone 13 128GB", tier="good")
                 canonical = str(pos[0]) if pos else ""
                 tier = str(kw.get("tier") or (pos[1] if len(pos) > 1 else "good"))
                 return format_observation(search_comparable_listings(canonical, tier))
+
+            if tool_name == "search_product_online":
+                product_q = str(pos[0]) if pos else args_str.strip('"')
+                condition = str(kw.get("condition_text") or (pos[1] if len(pos) > 1 else ""))
+                return format_observation(
+                    search_product_online(product_q, condition_text=condition)
+                )
 
             return json.dumps({"error": f"Unknown tool: {tool_name}"}, ensure_ascii=False)
 

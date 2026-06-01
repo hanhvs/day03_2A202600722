@@ -2,7 +2,8 @@
 
 from src.tools.condition_scoring import score_condition
 from src.tools.listings_mock import search_comparable_listings
-from src.tools.product_catalog import normalize_product, get_reference_price
+from src.tools.openai_web_search import is_web_search_enabled, search_product_online
+from src.tools.product_catalog import get_reference_price, normalize_product
 
 # Tool metadata for LLM (all 4; partner implements score_condition + search_comparable_listings)
 TOOL_SPECS = [
@@ -30,8 +31,17 @@ TOOL_SPECS = [
     {
         "name": "search_comparable_listings",
         "description": (
-            "[@0infinitive0] Tìm tin đăng tương đương (mock). Input: canonical_name (str), tier (str). "
-            "Trả về avg_vnd, min_vnd, max_vnd, sample_count."
+            "Tìm tin đăng tương đương (mock catalog). Input: canonical_name (str), tier (str). "
+            "Trả về avg_vnd, min_vnd, max_vnd, sample_count. Chỉ dùng khi đã matched catalog."
+        ),
+    },
+    {
+        "name": "search_product_online",
+        "description": (
+            "BẮT BUỘC khi normalize_product matched=false hoặc get_reference_price found=false. "
+            "Tra giá thị trường VN qua OpenAI Web Search. "
+            'Input: product_query (str), tùy chọn condition_text (str). '
+            'Vd search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")'
         ),
     },
 ]
@@ -42,4 +52,6 @@ __all__ = [
     "get_reference_price",
     "score_condition",
     "search_comparable_listings",
+    "search_product_online",
+    "is_web_search_enabled",
 ]

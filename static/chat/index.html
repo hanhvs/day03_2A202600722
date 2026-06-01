@@ -106,6 +106,45 @@
       display: flex;
       justify-content: space-between;
     }
+    .steps-collapse {
+      border-bottom: 1px solid transparent;
+    }
+    .run-card.collapsed .steps-collapse {
+      border-top: 1px solid var(--border);
+    }
+    .steps-toggle {
+      display: none;
+      width: 100%;
+      padding: 0.55rem 1rem;
+      border: none;
+      background: var(--surface2);
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.8rem;
+      text-align: left;
+      cursor: pointer;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .steps-toggle:hover { color: var(--text); background: #2a384c; }
+    .run-card.has-steps.collapsed .steps-toggle { display: flex; }
+    .steps-toggle .chevron {
+      display: inline-block;
+      transition: transform 0.2s ease;
+      font-size: 0.65rem;
+    }
+    .run-card.steps-expanded .steps-toggle .chevron { transform: rotate(90deg); }
+    .steps-panel {
+      overflow: hidden;
+      max-height: 4000px;
+      transition: max-height 0.35s ease, opacity 0.25s ease;
+      opacity: 1;
+    }
+    .run-card.collapsed .steps-panel {
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
     .steps { padding: 0.5rem 0; }
     .step {
       border-left: 3px solid var(--border);
@@ -162,6 +201,9 @@
       border-radius: 10px;
       font-size: 0.95rem;
       line-height: 1.5;
+    }
+    .run-card.collapsed .final-box {
+      margin-top: 0.5rem;
     }
     .final-box .label {
       font-size: 0.7rem;
@@ -251,24 +293,78 @@
       const wrap = document.createElement("div");
       wrap.className = "msg-assistant";
       wrap.innerHTML = `
-        <div class="run-card">
+        <div class="run-card steps-expanded">
           <div class="run-header">
             <span class="run-title">Đang xử lý…</span>
             <span class="run-meta"></span>
           </div>
-          <div class="steps"></div>
           <div class="final-area"></div>
+          <div class="steps-collapse">
+            <button type="button" class="steps-toggle" aria-expanded="false">
+              <span class="chevron">▶</span>
+              <span class="steps-toggle-label">Xem các bước ReAct</span>
+            </button>
+            <div class="steps-panel">
+              <div class="steps"></div>
+            </div>
+          </div>
         </div>`;
       messagesEl.appendChild(wrap);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      const runCard = wrap.querySelector(".run-card");
+      const toggle = wrap.querySelector(".steps-toggle");
+      toggle.addEventListener("click", () => toggleStepsPanel(runCard));
+
       return {
         root: wrap,
+        runCard,
         steps: wrap.querySelector(".steps"),
+        stepsToggle: toggle,
+        stepsToggleLabel: wrap.querySelector(".steps-toggle-label"),
         finalArea: wrap.querySelector(".final-area"),
         title: wrap.querySelector(".run-title"),
         meta: wrap.querySelector(".run-meta"),
         toolRuns: {},
+        stepCount: 0,
+        stepsCollapsed: false,
       };
+    }
+
+    function updateStepsToggleLabel(runCard, count) {
+      const label = runCard.querySelector(".steps-toggle-label");
+      if (!label) return;
+      label.textContent =
+        count > 0
+          ? `Xem các bước ReAct (${count} mục)`
+          : "Xem các bước ReAct";
+    }
+
+    function collapseStepsPanel(card) {
+      if (!card.runCard || card.stepCount === 0) return;
+      card.stepsCollapsed = true;
+      card.runCard.classList.add("has-steps", "collapsed");
+      card.runCard.classList.remove("steps-expanded");
+      card.stepsToggle.setAttribute("aria-expanded", "false");
+      updateStepsToggleLabel(card.runCard, card.stepCount);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function toggleStepsPanel(runCard) {
+      const expanded = runCard.classList.toggle("steps-expanded");
+      runCard.classList.toggle("collapsed", !expanded);
+      runCard.querySelector(".steps-toggle")?.setAttribute(
+        "aria-expanded",
+        expanded ? "true" : "false"
+      );
+      const label = runCard.querySelector(".steps-toggle-label");
+      if (label && expanded) {
+        const n = runCard.querySelectorAll(".step").length;
+        label.textContent = `Ẩn các bước ReAct (${n} mục)`;
+      } else if (label) {
+        const n = runCard.querySelectorAll(".step").length;
+        label.textContent = `Xem các bước ReAct (${n} mục)`;
+      }
     }
 
     function addStep(card, kind, label, bodyHtml) {
@@ -276,7 +372,12 @@
       step.className = `step ${kind}`;
       step.innerHTML = `<div class="step-label">${label}</div><div class="step-body">${bodyHtml}</div>`;
       card.steps.appendChild(step);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      card.stepCount += 1;
+      card.runCard?.classList.add("has-steps");
+      updateStepsToggleLabel(card.runCard, card.stepCount);
+      if (!card.stepsCollapsed) {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
       return step;
     }
 
@@ -312,10 +413,11 @@
           break;
         case "tool_start": {
           const key = `${data.step}-${data.tool}`;
+          const toolLabel = data.tool === "search_product_online" ? "🌐 Web Search" : data.tool;
           const el = addStep(
             card,
             "tool-running",
-            `Tool · ${data.tool}`,
+            `Tool · ${toolLabel}`,
             `<span class="spinner"></span>Đang chạy…<br><code>${escapeHtml(data.args || "")}</code>`
           );
           card.toolRuns[key] = el;
@@ -326,10 +428,11 @@
           const key = `${data.step}-${data.tool}`;
           const prev = card.toolRuns[key];
           if (prev) prev.remove();
+          const toolLabel = data.tool === "search_product_online" ? "🌐 Web Search" : data.tool;
           addStep(
             card,
             "tool",
-            `Observation · ${data.tool}`,
+            `Observation · ${toolLabel}`,
             `<pre>${escapeHtml(formatJson(data.observation))}</pre>`
           );
           setStatus(`Tool ${data.tool} xong`);
@@ -342,6 +445,7 @@
               ${escapeHtml(data.text || "")}
             </div>`;
           card.title.textContent = "Hoàn thành";
+          collapseStepsPanel(card);
           setStatus("Xong");
           messagesEl.scrollTop = messagesEl.scrollHeight;
           break;
@@ -357,6 +461,7 @@
         case "done":
           if (data.status === "incomplete" && data.fallback_text) {
             card.finalArea.innerHTML = `<div class="final-box"><div class="label">Kết quả (không đủ bước)</div>${escapeHtml(data.fallback_text)}</div>`;
+            collapseStepsPanel(card);
           }
           setStatus("Sẵn sàng");
           break;

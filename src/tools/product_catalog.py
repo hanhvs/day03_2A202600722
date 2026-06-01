@@ -109,13 +109,18 @@ def normalize_product(query: str) -> Dict[str, Any]:
     score = _score_match(query, best)
 
     if score < 0.35:
+        from src.tools.openai_web_search import catalog_miss_hint, is_web_search_enabled
+
         return {
             "matched": False,
+            "catalog_miss": True,
             "canonical_name": None,
             "category": None,
             "storage_gb": None,
             "confidence": round(score, 2),
-            "message": "Không khớp catalog. Thử ghi rõ model và dung lượng (vd: iPhone 13 128GB).",
+            "message": "Không khớp catalog nội bộ. Thử ghi rõ model và dung lượng (vd: iPhone 13 128GB).",
+            "suggestion": catalog_miss_hint() if is_web_search_enabled() else None,
+            "recommended_tool": "search_product_online" if is_web_search_enabled() else None,
         }
 
     return {
@@ -152,13 +157,18 @@ def get_reference_price(
     if norm.get("matched"):
         return get_reference_price(norm["canonical_name"], storage_gb=storage_gb)
 
+    from src.tools.openai_web_search import catalog_miss_hint, is_web_search_enabled
+
     return {
         "found": False,
+        "catalog_miss": True,
         "canonical_name": canonical_name,
         "reference_vnd": None,
         "currency": "VND",
         "source": "products_catalog.json",
         "message": "Sản phẩm không có trong catalog.",
+        "suggestion": catalog_miss_hint() if is_web_search_enabled() else None,
+        "recommended_tool": "search_product_online" if is_web_search_enabled() else None,
     }
 
 

@@ -21,3 +21,5 @@ def test_reference_price():
 def test_unknown_product():
     r = normalize_product("xyz unknown gadget 9000")
     assert r["matched"] is False
+    assert r.get("catalog_miss") is True
+    assert r.get("recommended_tool") == "search_product_online"
