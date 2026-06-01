@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Generator, Literal, Optional
+from typing import Any, Dict, Generator, Literal, Optional, List
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -40,6 +40,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=4000)
     mode: Literal["agent", "chatbot"] = "agent"
     persist_catalog: bool = True
+    history: Optional[List[Dict[str, str]]] = None
 
 
 def _sse_event(event_type: str, data: Dict[str, Any]) -> str:
@@ -47,14 +48,18 @@ def _sse_event(event_type: str, data: Dict[str, Any]) -> str:
     return f"event: {event_type}\ndata: {payload}\n\n"
 
 
-def _stream_agent(message: str, persist_catalog: bool) -> Generator[str, None, None]:
+def _stream_agent(
+    message: str,
+    persist_catalog: bool,
+    history: Optional[List[Dict[str, str]]],
+) -> Generator[str, None, None]:
     llm = get_llm_from_env()
     agent = ReActAgent(
         llm=llm,
         tools=TOOL_SPECS,
         persist_catalog_updates=persist_catalog,
     )
-    for event in agent.run_stream(message):
+    for event in agent.run_stream(message, history):
         ev_type = event.pop("type", "message")
         yield _sse_event(ev_type, event)
 
@@ -94,7 +99,7 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
     if req.mode == "chatbot":
         generator = _stream_chatbot(message)
     else:
-        generator = _stream_agent(message, req.persist_catalog)
+        generator = _stream_agent(message, req.persist_catalog, req.history)
 
     return StreamingResponse(
         generator,

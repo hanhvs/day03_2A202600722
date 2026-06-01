@@ -72,9 +72,9 @@ Action: search_comparable_listings("iPhone 13 128GB", tier="good")
 Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
 """
 
-    def run(self, user_input: str) -> str:
+    def run(self, user_input: str, previous_messages: Optional[List[Dict[str, str]]] = None) -> str:
         final: Optional[str] = None
-        for event in self.run_stream(user_input):
+        for event in self.run_stream(user_input, previous_messages):
             if event.get("type") == "final_answer":
                 final = event.get("text")
             elif event.get("type") == "error":
@@ -83,7 +83,11 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
                 final = event.get("fallback_text")
         return final or "Agent chưa hoàn thành."
 
-    def run_stream(self, user_input: str) -> Generator[Dict[str, Any], None, None]:
+    def run_stream(
+        self,
+        user_input: str,
+        previous_messages: Optional[List[Dict[str, str]]] = None,
+    ) -> Generator[Dict[str, Any], None, None]:
         """Yield step events for SSE / live UI."""
         self.history = []
         logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
@@ -95,7 +99,19 @@ Action: search_product_online("Samsung Z Flip 5 256GB", "pin 90%, đẹp")
         }
 
         system_prompt = self.get_system_prompt()
-        conversation = f"Question: {user_input}\n"
+        conversation = ""
+        if previous_messages:
+            for msg in previous_messages:
+                role = msg.get("role", "user")
+                content = str(msg.get("content", "")).strip()
+                if not content:
+                    continue
+                if role == "assistant":
+                    conversation += f"Assistant: {content}\n"
+                else:
+                    conversation += f"User: {content}\n"
+            conversation += "\n"
+        conversation += f"Question: {user_input}\n"
         steps = 0
         last_content = ""
 

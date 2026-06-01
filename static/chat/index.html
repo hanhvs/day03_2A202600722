@@ -275,6 +275,7 @@
     const persistEl = document.getElementById("persistCatalog");
 
     let busy = false;
+    let previousUserMessage = null;
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -496,7 +497,7 @@
       return { events, rest };
     }
 
-    async function streamChat(message) {
+    async function streamChat(message, history) {
       const res = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -504,6 +505,7 @@
           message,
           mode: modeEl.value,
           persist_catalog: persistEl.checked,
+          history,
         }),
       });
 
@@ -542,8 +544,10 @@
       sendBtn.disabled = true;
       appendUser(text);
       inputEl.value = "";
+      const historyToSend = previousUserMessage ? [{ role: "user", content: previousUserMessage }] : [];
+      previousUserMessage = text;
       try {
-        await streamChat(text);
+        await streamChat(text, historyToSend);
       } catch (e) {
         const card = createRunCard();
         handleEvent(card, "error", { message: e.message });
