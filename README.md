@@ -2,6 +2,9 @@
 
 Welcome to Phase 3 of the Agentic AI course! This lab focuses on moving from a simple LLM Chatbot to a sophisticated **ReAct Agent** with industry-standard monitoring.
 
+**Team v1 product:** [PriceCheck Agent](docs/PROJECT_OVERVIEW.md) — ước lượng giá bán lại đồ cũ (mock tools + ReAct).  
+📄 **[Project Overview](docs/PROJECT_OVERVIEW.md)** · **[V1 Task Plan (Colab)](docs/V1_TASK_PLAN_COLAB.md)**
+
 ## 🚀 Getting Started
 
 ### 1. Setup Environment
@@ -15,8 +18,18 @@ cp .env.example .env
 pip install -r requirements.txt
 ```
 
-### 3. Directory Structure
-- `src/tools/`: Extension point for your custom tools.
+### 3. Run demos (PriceCheck v1)
+```bash
+python run_hanhvs_demo.py          # Chatbot + ReAct agent (needs API key)
+```
+
+### 4. Directory Structure
+- `src/agent/` — ReAct loop
+- `src/chatbot/` — Baseline chatbot
+- `src/core/` — LLM providers + `get_llm_from_env()`
+- `src/tools/` — Custom tools (catalog, condition, listings)
+- `notebooks/` — Colab shared notebook
+- `docs/` — [Project overview](docs/PROJECT_OVERVIEW.md)
 
 ## 🏠 Running with Local Models (CPU)
 
