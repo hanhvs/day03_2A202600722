@@ -68,17 +68,71 @@ def _normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", text.lower().strip())
 
 
-def _detect_tier(condition_text: str) -> str:
-    text = _normalize_text(condition_text)
-    if any(word in text for word in POOR_KEYWORDS):
-        return "poor"
-    if any(word in text for word in FAIR_KEYWORDS):
-        return "fair"
-    if any(word in text for word in LIKE_NEW_KEYWORDS):
+def _score_dimension_pin(text: str) -> float:
+    match = BATTERY_RE.search(text)
+    if match:
+        try:
+            return min(100.0, max(0.0, float(match.group(1))))
+        except ValueError:
+            pass
+    if "pin" in text:
+        return 75.0
+    return 82.0
+
+
+def _score_dimension_screen(text: str) -> float:
+    if any(w in text for w in ["màn hỏng", "màn lỗi", "dead pixel", "đốm", "sọc màn"]):
+        return 45.0
+    if any(w in text for w in ["màn ok", "màn đẹp", "màn tốt"]):
+        return 90.0
+    if "màn" in text:
+        return 75.0
+    return 85.0
+
+
+def _score_dimension_body(text: str) -> float:
+    if any(w in text for w in POOR_KEYWORDS):
+        return 40.0
+    if any(w in text for w in ["trầy", "cấn", "vết", "xoáy"]):
+        return 62.0
+    if any(w in text for w in ["vỏ đẹp", "vỏ còn tốt", "đẹp"]):
+        return 92.0
+    return 80.0
+
+
+def _score_dimension_box(text: str) -> float:
+    if "không hộp" in text or "mất hộp" in text or "no box" in text:
+        return 55.0
+    if any(w in text for w in ["đủ hộp", "full box", "fullbox", "box"]):
+        return 95.0
+    return 78.0
+
+
+def _tier_from_average(avg: float) -> str:
+    if avg >= 88:
         return "like_new"
-    if any(word in text for word in GOOD_KEYWORDS):
+    if avg >= 75:
         return "good"
-    return "good"
+    if avg >= 58:
+        return "fair"
+    return "poor"
+
+
+def _detect_tier_v2(condition_text: str) -> tuple[str, Dict[str, float]]:
+    text = _normalize_text(condition_text)
+    dimensions = {
+        "pin": _score_dimension_pin(text),
+        "screen": _score_dimension_screen(text),
+        "body": _score_dimension_body(text),
+        "box": _score_dimension_box(text),
+    }
+    avg = sum(dimensions.values()) / len(dimensions)
+    return _tier_from_average(avg), dimensions
+
+
+def _detect_tier(condition_text: str) -> str:
+    tier, _ = _detect_tier_v2(condition_text)
+    return tier
 
 
 def _adjust_by_battery(tier: str, condition_text: str) -> str:
@@ -126,19 +180,22 @@ def _build_risk_flags(condition_text: str) -> List[str]:
 
 
 def score_condition(condition_text: str) -> Dict[str, Any]:
-    """Map a free-form condition description to a tier, multiplier, and risk flags."""
-    tier = _detect_tier(condition_text)
-    tier = _adjust_by_battery(tier, condition_text)
+    """Map condition text → tier via v2 weighted dimensions (pin, screen, body, box)."""
+    tier, dimensions = _detect_tier_v2(condition_text)
     tier = _downgrade_if_no_box(tier, condition_text)
     multiplier = TIER_MULTIPLIERS.get(tier, 0.75)
     risk_flags = _build_risk_flags(condition_text)
+    avg_score = round(sum(dimensions.values()) / len(dimensions), 1)
 
     return {
         "tier": tier,
         "multiplier": multiplier,
         "risk_flags": risk_flags,
+        "scoring_version": "v2",
+        "dimension_scores": dimensions,
+        "average_score": avg_score,
         "notes": [
-            "Đã đánh giá tình trạng dựa trên mô tả khách hàng.",
-            f"Ước tính tier {tier} với hệ số {multiplier}.",
+            "v2: chấm theo 4 chiều (pin, màn, vỏ, hộp) rồi gộp tier.",
+            f"Tier {tier}, điểm TB {avg_score}/100, hệ số {multiplier}.",
         ],
     }

@@ -24,7 +24,7 @@ STATIC_CHAT = ROOT / "static" / "chat" / "index.html"
 app = FastAPI(
     title="PriceCheck Agent API",
     description="ReAct agent + chatbot baseline with SSE streaming",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
