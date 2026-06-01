@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PriceCheck — ReAct Chat</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-dim: #2563eb33;
+      --thought: #a78bfa;
+      --tool: #34d399;
+      --tool-bg: #34d39918;
+      --final: #fbbf24;
+      --user: #3b82f6;
+      --error: #f87171;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 1.15rem; font-weight: 600; }
+    header p { margin: 0.2rem 0 0; font-size: 0.8rem; color: var(--muted); }
+    .controls { display: flex; gap: 0.5rem; align-items: center; }
+    select, button {
+      font: inherit;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 0.45rem 0.75rem;
+    }
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    main {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-width: 820px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .msg-user {
+      align-self: flex-end;
+      max-width: 85%;
+      background: var(--user);
+      color: #fff;
+      padding: 0.65rem 1rem;
+      border-radius: 16px 16px 4px 16px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    .msg-assistant {
+      align-self: flex-start;
+      max-width: 100%;
+      width: 100%;
+    }
+    .run-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .run-header {
+      padding: 0.6rem 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+    }
+    .steps { padding: 0.5rem 0; }
+    .step {
+      border-left: 3px solid var(--border);
+      margin: 0 0.75rem 0.5rem 1rem;
+      padding-left: 0.85rem;
+      animation: fadeIn 0.25s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: none; }
+    }
+    .step-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .step.thought .step-label { color: var(--thought); }
+    .step.tool .step-label { color: var(--tool); }
+    .step.tool-running .step-label { color: var(--muted); }
+    .step-body {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .step pre {
+      margin: 0.35rem 0 0;
+      padding: 0.5rem 0.65rem;
+      background: var(--surface2);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .tool-running .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--tool);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .final-box {
+      margin: 0.75rem 1rem 1rem;
+      padding: 0.85rem 1rem;
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .final-box .label {
+      font-size: 0.7rem;
+      color: var(--final);
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    .error-box {
+      color: var(--error);
+      padding: 0.5rem 1rem;
+      font-size: 0.88rem;
+    }
+    footer {
+      padding: 0.75rem 0 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 0.5rem;
+    }
+    footer textarea {
+      flex: 1;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
+      padding: 0.65rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.4;
+    }
+    footer textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+    .status { font-size: 0.75rem; color: var(--muted); padding: 0 0 0.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>PriceCheck Agent</h1>
+      <p>ReAct + SSE — từng tool hiển thị lần lượt</p>
+    </div>
+    <div class="controls">
+      <select id="mode" aria-label="Chế độ">
+        <option value="agent">Agent (ReAct + tools)</option>
+        <option value="chatbot">Chatbot baseline</option>
+      </select>
+      <label style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px;">
+        <input type="checkbox" id="persistCatalog" checked />
+        Ghi catalog JSON
+      </label>
+    </div>
+  </header>
+
+  <main>
+    <div class="status" id="status">Sẵn sàng</div>
+    <div id="messages"></div>
+    <footer>
+      <textarea id="input" rows="2" placeholder="VD: iPhone 13 128GB, pin 88%, màn ok — giá bán lại?"></textarea>
+      <button type="button" class="primary" id="send">Gửi</button>
+    </footer>
+  </main>
+
+  <script>
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const modeEl = document.getElementById("mode");
+    const statusEl = document.getElementById("status");
+    const persistEl = document.getElementById("persistCatalog");
+
+    let busy = false;
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function appendUser(text) {
+      const el = document.createElement("div");
+      el.className = "msg-user";
+      el.textContent = text;
+      messagesEl.appendChild(el);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return el;
+    }
+
+    function createRunCard() {
+      const wrap = document.createElement("div");
+      wrap.className = "msg-assistant";
+      wrap.innerHTML = `
+        <div class="run-card">
+          <div class="run-header">
+            <span class="run-title">Đang xử lý…</span>
+            <span class="run-meta"></span>
+          </div>
+          <div class="steps"></div>
+          <div class="final-area"></div>
+        </div>`;
+      messagesEl.appendChild(wrap);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return {
+        root: wrap,
+        steps: wrap.querySelector(".steps"),
+        finalArea: wrap.querySelector(".final-area"),
+        title: wrap.querySelector(".run-title"),
+        meta: wrap.querySelector(".run-meta"),
+        toolRuns: {},
+      };
+    }
+
+    function addStep(card, kind, label, bodyHtml) {
+      const step = document.createElement("div");
+      step.className = `step ${kind}`;
+      step.innerHTML = `<div class="step-label">${label}</div><div class="step-body">${bodyHtml}</div>`;
+      card.steps.appendChild(step);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return step;
+    }
+
+    function formatJson(str) {
+      try {
+        const o = typeof str === "string" ? JSON.parse(str) : str;
+        return JSON.stringify(o, null, 2);
+      } catch {
+        return str;
+      }
+    }
+
+    function handleEvent(card, eventType, data) {
+      switch (eventType) {
+        case "agent_start":
+          card.title.textContent = "ReAct Agent";
+          card.meta.textContent = `Model: ${data.model || "—"} · Tools: ${(data.tools || []).join(", ")}`;
+          setStatus("Agent bắt đầu…");
+          break;
+        case "chatbot_start":
+          card.title.textContent = "Chatbot baseline";
+          card.meta.textContent = `Model: ${data.model || "—"}`;
+          setStatus("Chatbot đang trả lời…");
+          break;
+        case "llm_start":
+          setStatus(`Bước ${data.step}: đang gọi LLM…`);
+          break;
+        case "llm_done":
+          setStatus(`Bước ${data.step}: LLM xong (${data.latency_ms || "?"} ms)`);
+          break;
+        case "thought":
+          addStep(card, "thought", `Thought · bước ${data.step}`, escapeHtml(data.text || ""));
+          break;
+        case "tool_start": {
+          const key = `${data.step}-${data.tool}`;
+          const el = addStep(
+            card,
+            "tool-running",
+            `Tool · ${data.tool}`,
+            `<span class="spinner"></span>Đang chạy…<br><code>${escapeHtml(data.args || "")}</code>`
+          );
+          card.toolRuns[key] = el;
+          setStatus(`Tool: ${data.tool}…`);
+          break;
+        }
+        case "tool_result": {
+          const key = `${data.step}-${data.tool}`;
+          const prev = card.toolRuns[key];
+          if (prev) prev.remove();
+          addStep(
+            card,
+            "tool",
+            `Observation · ${data.tool}`,
+            `<pre>${escapeHtml(formatJson(data.observation))}</pre>`
+          );
+          setStatus(`Tool ${data.tool} xong`);
+          break;
+        }
+        case "final_answer":
+          card.finalArea.innerHTML = `
+            <div class="final-box">
+              <div class="label">Final Answer</div>
+              ${escapeHtml(data.text || "")}
+            </div>`;
+          card.title.textContent = "Hoàn thành";
+          setStatus("Xong");
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+          break;
+        case "catalog_update":
+          if (data.data?.saved) {
+            addStep(card, "tool", "Catalog JSON", `<pre>${escapeHtml(JSON.stringify(data.data, null, 2))}</pre>`);
+          }
+          break;
+        case "error":
+          card.finalArea.innerHTML = `<div class="error-box">Lỗi: ${escapeHtml(data.message || "unknown")}</div>`;
+          setStatus("Lỗi");
+          break;
+        case "done":
+          if (data.status === "incomplete" && data.fallback_text) {
+            card.finalArea.innerHTML = `<div class="final-box"><div class="label">Kết quả (không đủ bước)</div>${escapeHtml(data.fallback_text)}</div>`;
+          }
+          setStatus("Sẵn sàng");
+          break;
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function parseSSEChunk(buffer) {
+      const events = [];
+      const parts = buffer.split("\n\n");
+      const rest = parts.pop() || "";
+      for (const block of parts) {
+        let eventType = "message";
+        let dataLine = "";
+        for (const line of block.split("\n")) {
+          if (line.startsWith("event:")) eventType = line.slice(6).trim();
+          else if (line.startsWith("data:")) dataLine += line.slice(5).trim();
+        }
+        if (dataLine) {
+          try {
+            events.push({ eventType, data: JSON.parse(dataLine) });
+          } catch (e) {
+            console.warn("SSE parse error", e, dataLine);
+          }
+        }
+      }
+      return { events, rest };
+    }
+
+    async function streamChat(message) {
+      const res = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          mode: modeEl.value,
+          persist_catalog: persistEl.checked,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const card = createRunCard();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const { events, rest } = parseSSEChunk(buffer);
+        buffer = rest;
+        for (const { eventType, data } of events) {
+          handleEvent(card, eventType, data);
+        }
+      }
+      if (buffer.trim()) {
+        const { events } = parseSSEChunk(buffer + "\n\n");
+        for (const { eventType, data } of events) {
+          handleEvent(card, eventType, data);
+        }
+      }
+    }
+
+    async function onSend() {
+      const text = inputEl.value.trim();
+      if (!text || busy) return;
+      busy = true;
+      sendBtn.disabled = true;
+      appendUser(text);
+      inputEl.value = "";
+      try {
+        await streamChat(text);
+      } catch (e) {
+        const card = createRunCard();
+        handleEvent(card, "error", { message: e.message });
+        handleEvent(card, "done", { status: "error" });
+      } finally {
+        busy = false;
+        sendBtn.disabled = false;
+      }
+    }
+
+    sendBtn.addEventListener("click", onSend);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        onSend();
+      }
+    });
+  </script>
+</body>
+</html>

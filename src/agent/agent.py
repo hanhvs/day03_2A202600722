@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, Generator, List, Optional
 
 from src.agent.action_parser import parse_action, parse_final_answer, parse_thought
 from src.core.llm_provider import LLMProvider
@@ -72,65 +72,121 @@ Action: search_comparable_listings("iPhone 13 128GB", tier="good")
 """
 
     def run(self, user_input: str) -> str:
+        final: Optional[str] = None
+        for event in self.run_stream(user_input):
+            if event.get("type") == "final_answer":
+                final = event.get("text")
+            elif event.get("type") == "error":
+                return event.get("message", "Lỗi agent.")
+            elif event.get("type") == "done" and final is None:
+                final = event.get("fallback_text")
+        return final or "Agent chưa hoàn thành."
+
+    def run_stream(self, user_input: str) -> Generator[Dict[str, Any], None, None]:
+        """Yield step events for SSE / live UI."""
+        self.history = []
         logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
+
+        yield {
+            "type": "agent_start",
+            "model": self.llm.model_name,
+            "tools": [t["name"] for t in self.tools],
+        }
 
         system_prompt = self.get_system_prompt()
         conversation = f"Question: {user_input}\n"
         steps = 0
         last_content = ""
 
-        while steps < self.max_steps:
-            result = self.llm.generate(conversation, system_prompt=system_prompt)
-            content = result.get("content") or ""
-            last_content = content
+        try:
+            while steps < self.max_steps:
+                yield {"type": "llm_start", "step": steps}
 
-            thought = parse_thought(content)
-            final = parse_final_answer(content)
-            action = parse_action(content)
+                result = self.llm.generate(conversation, system_prompt=system_prompt)
+                content = result.get("content") or ""
+                last_content = content
 
-            step_log = {
-                "step": steps,
-                "thought": thought,
-                "has_action": action is not None,
-                "has_final": final is not None,
-                "usage": result.get("usage"),
-                "latency_ms": result.get("latency_ms"),
-            }
-            if action:
-                step_log["action"] = {"tool": action[0], "args": action[1]}
-            logger.log_event("AGENT_STEP", step_log)
+                thought = parse_thought(content)
+                final = parse_final_answer(content)
+                action = parse_action(content)
 
-            self.history.append({"step": steps, "llm_output": content, **step_log})
+                yield {
+                    "type": "llm_done",
+                    "step": steps,
+                    "latency_ms": result.get("latency_ms"),
+                    "usage": result.get("usage"),
+                    "raw": content,
+                }
 
-            if final:
-                catalog_update = self._maybe_update_catalog(user_input, final)
-                logger.log_event(
-                    "AGENT_END",
-                    {"steps": steps + 1, "status": "final_answer", "catalog_update": catalog_update},
-                )
-                return final
+                if thought:
+                    yield {"type": "thought", "step": steps, "text": thought}
 
-            if action:
-                tool_name, args_str = action
-                observation = self._execute_tool(tool_name, args_str)
-                self.history[-1]["observation"] = observation
-                conversation += f"{content.strip()}\nObservation: {observation}\n"
-            else:
-                conversation += f"{content.strip()}\n"
-                if steps >= self.max_steps - 1:
-                    break
+                step_log: Dict[str, Any] = {
+                    "step": steps,
+                    "thought": thought,
+                    "has_action": action is not None,
+                    "has_final": final is not None,
+                    "usage": result.get("usage"),
+                    "latency_ms": result.get("latency_ms"),
+                }
+                if action:
+                    step_log["action"] = {"tool": action[0], "args": action[1]}
+                logger.log_event("AGENT_STEP", step_log)
+                self.history.append({"step": steps, "llm_output": content, **step_log})
 
-            steps += 1
+                if final:
+                    yield {"type": "final_answer", "step": steps, "text": final}
+                    catalog_update = self._maybe_update_catalog(user_input, final)
+                    yield {"type": "catalog_update", "data": catalog_update}
+                    logger.log_event(
+                        "AGENT_END",
+                        {"steps": steps + 1, "status": "final_answer", "catalog_update": catalog_update},
+                    )
+                    yield {"type": "done", "status": "final_answer"}
+                    return
 
-        logger.log_event("AGENT_END", {"steps": steps, "status": "max_steps_or_incomplete"})
-        if parse_final_answer(last_content):
-            final = parse_final_answer(last_content)  # type: ignore
-            self._maybe_update_catalog(user_input, final)
-            return final
-        return (
-            last_content.strip()
-            or "Agent chưa hoàn thành trong số bước cho phép. Kiểm tra logs/ và format Action."
-        )
+                if action:
+                    tool_name, args_str = action
+                    yield {
+                        "type": "tool_start",
+                        "step": steps,
+                        "tool": tool_name,
+                        "args": args_str,
+                    }
+                    observation = self._execute_tool(tool_name, args_str)
+                    self.history[-1]["observation"] = observation
+                    yield {
+                        "type": "tool_result",
+                        "step": steps,
+                        "tool": tool_name,
+                        "observation": observation,
+                    }
+                    conversation += f"{content.strip()}\nObservation: {observation}\n"
+                else:
+                    conversation += f"{content.strip()}\n"
+                    if steps >= self.max_steps - 1:
+                        break
+
+                steps += 1
+
+            logger.log_event("AGENT_END", {"steps": steps, "status": "max_steps_or_incomplete"})
+            fallback = parse_final_answer(last_content)
+            if fallback:
+                self._maybe_update_catalog(user_input, fallback)
+                yield {"type": "final_answer", "step": steps, "text": fallback}
+                yield {"type": "done", "status": "final_answer"}
+                return
+
+            fallback_text = (
+                last_content.strip()
+                or "Agent chưa hoàn thành trong số bước cho phép."
+            )
+            yield {"type": "done", "status": "incomplete", "fallback_text": fallback_text}
+
+        except Exception as e:
+            logger.log_event("AGENT_ERROR", {"error": str(e)})
+            yield {"type": "error", "message": str(e)}
+            yield {"type": "done", "status": "error"}
 
     def _maybe_update_catalog(self, user_input: str, final_answer: str) -> Dict[str, Any]:
         if not self.persist_catalog_updates:

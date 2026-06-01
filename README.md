@@ -21,6 +21,8 @@ pip install -r requirements.txt
 ### 3. Run demos (PriceCheck v1)
 ```bash
 python run_hanhvs_demo.py          # Chatbot + ReAct agent (needs API key)
+pip install -r requirements.txt
+python run_api.py                  # API + chat UI → http://localhost:8000
 ```
 
 ### 4. Directory Structure

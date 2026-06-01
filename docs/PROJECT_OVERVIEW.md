@@ -211,6 +211,21 @@ pip install -r requirements.txt
 python -c "from src.tools.product_catalog import normalize_product; print(normalize_product('iphone 13 128gb'))"
 ```
 
+### API + Chat UI (SSE)
+
+```bash
+python run_api.py
+# Mở http://localhost:8000 — giao diện chat, stream từng tool qua SSE
+```
+
+| Endpoint | Mô tả |
+|----------|--------|
+| `GET /` | HTML chat (`static/chat/index.html`) |
+| `GET /api/health` | Health check |
+| `POST /api/chat/stream` | SSE — body `{ "message", "mode": "agent"\|"chatbot", "persist_catalog" }` |
+
+Sự kiện SSE: `agent_start`, `thought`, `tool_start`, `tool_result`, `final_answer`, `catalog_update`, `done`.
+
 ### Demo chatbot + agent (cần API)
 
 ```bash

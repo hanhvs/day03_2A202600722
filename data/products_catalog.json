@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "description": "Mock catalog PriceCheck — chỉnh sửa thủ công hoặc tự cập nhật sau Final Answer của agent",
-  "updated_at": "2026-06-01T08:20:53.817588+00:00",
+  "updated_at": "2026-06-01T08:51:47.167297+00:00",
   "products": [
     {
       "id": "iphone-13-128gb",
@@ -24,16 +24,27 @@
           "listings_avg_vnd": null,
           "user_query": "iPhone 13 128GB, pin 88%, màn ok, vỏ đẹp, đủ hộp sạc — giá bán lại?",
           "final_answer_excerpt": "Chiếc iPhone 13 128GB của bạn, với tình trạng pin 88%, màn hình và vỏ đẹp, đầy đủ hộp sạc, có thể được định giá bán lại trong khoảng từ 8,750,000 VND đến 10,625,000 VND. Nên lưu ý rằng giá có thể thay đổi dựa trên thị trường và mong đợi riêng của người mua."
+        },
+        {
+          "recorded_at": "2026-06-01T08:51:47.167282+00:00",
+          "source": "agent_final_answer",
+          "tier": null,
+          "estimated_min_vnd": null,
+          "estimated_max_vnd": null,
+          "suggested_vnd": 10000000,
+          "listings_avg_vnd": null,
+          "user_query": "Iphone 13 128GB, 88% giá thị trường giờ là bao nhiêu",
+          "final_answer_excerpt": "Dựa trên tình trạng pin 88% của iPhone 13 128GB, giá bán lại trên thị trường hiện nay dao động từ 10 triệu VND đến 11 triệu VND. Bạn nên đăng bán trong khoảng giá này. Lưu ý rằng sản phẩm có thể bị ảnh hưởng bởi độ hao mòn của pin."
         }
       ],
       "last_market_summary": {
-        "updated_at": "2026-06-01T08:20:53.817564+00:00",
+        "updated_at": "2026-06-01T08:51:47.167282+00:00",
         "tier": null,
         "estimated_min_vnd": null,
         "estimated_max_vnd": null,
-        "suggested_vnd": 8750000,
+        "suggested_vnd": 10000000,
         "listings_avg_vnd": null,
-        "observation_count": 1
+        "observation_count": 2
       }
     },
     {
