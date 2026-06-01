@@ -1,74 +1,168 @@
-import os
-import re
+import json
 from typing import List, Dict, Any, Optional
+
+from src.agent.action_parser import parse_action, parse_final_answer, parse_thought
 from src.core.llm_provider import LLMProvider
 from src.telemetry.logger import logger
+from src.tools.product_catalog import (
+    format_observation,
+    get_reference_price,
+    normalize_product,
+)
+
+# Partner tools — wired when modules exist (@0infinitive0)
+try:
+    from src.tools.condition_scoring import score_condition
+except ImportError:
+    score_condition = None  # type: ignore
+
+try:
+    from src.tools.listings_mock import search_comparable_listings
+except ImportError:
+    search_comparable_listings = None  # type: ignore
+
 
 class ReActAgent:
-    """
-    SKELETON: A ReAct-style Agent that follows the Thought-Action-Observation loop.
-    Students should implement the core loop logic and tool execution.
-    """
-    
-    def __init__(self, llm: LLMProvider, tools: List[Dict[str, Any]], max_steps: int = 5):
+    """ReAct agent: Thought → Action → Observation → Final Answer."""
+
+    def __init__(self, llm: LLMProvider, tools: List[Dict[str, Any]], max_steps: int = 6):
         self.llm = llm
         self.tools = tools
         self.max_steps = max_steps
-        self.history = []
+        self.history: List[Dict[str, Any]] = []
 
     def get_system_prompt(self) -> str:
-        """
-        TODO: Implement the system prompt that instructs the agent to follow ReAct.
-        Should include:
-        1.  Available tools and their descriptions.
-        2.  Format instructions: Thought, Action, Observation.
-        """
-        tool_descriptions = "\n".join([f"- {t['name']}: {t['description']}" for t in self.tools])
-        return f"""
-        You are an intelligent assistant. You have access to the following tools:
-        {tool_descriptions}
+        tool_lines = "\n".join(
+            f"  - {t['name']}: {t['description']}" for t in self.tools
+        )
+        return f"""Bạn là PriceCheck Agent — tư vấn giá bán lại đồ cũ tại Việt Nam.
 
-        Use the following format:
-        Thought: your line of reasoning.
-        Action: tool_name(arguments)
-        Observation: result of the tool call.
-        ... (repeat Thought/Action/Observation if needed)
-        Final Answer: your final response.
-        """
+Công cụ (gọi tuần tự khi cần):
+{tool_lines}
+
+Quy trình gợi ý:
+1. normalize_product — nhận diện sản phẩm
+2. get_reference_price — giá tham chiếu mới (VND)
+3. score_condition — đánh giá tình trạng từ mô tả user
+4. search_comparable_listings — giá tin tương đương
+5. Final Answer — khoảng giá (triệu VND), gợi ý đăng, lưu ý rủi ro
+
+Định dạng BẮT BUỘC (không dùng markdown code block):
+Thought: <suy luận ngắn>
+Action: tool_name(tham_số)
+(hệ thống sẽ trả Observation — bạn không tự viết Observation)
+
+Khi đủ dữ liệu:
+Thought: <tổng hợp>
+Final Answer: <câu trả lời tiếng Việt cho user>
+
+Ví dụ Action:
+Action: normalize_product("iPhone 13 128GB")
+Action: get_reference_price("iPhone 13 128GB", storage_gb=128)
+Action: score_condition("pin 88%, màn ok, đủ hộp")
+Action: search_comparable_listings("iPhone 13 128GB", tier="good")
+"""
 
     def run(self, user_input: str) -> str:
-        """
-        TODO: Implement the ReAct loop logic.
-        1. Generate Thought + Action.
-        2. Parse Action and execute Tool.
-        3. Append Observation to prompt and repeat until Final Answer.
-        """
         logger.log_event("AGENT_START", {"input": user_input, "model": self.llm.model_name})
-        
-        current_prompt = user_input
+
+        system_prompt = self.get_system_prompt()
+        conversation = f"Question: {user_input}\n"
         steps = 0
+        last_content = ""
 
         while steps < self.max_steps:
-            # TODO: Generate LLM response
-            # result = self.llm.generate(current_prompt, system_prompt=self.get_system_prompt())
-            
-            # TODO: Parse Thought/Action from result
-            
-            # TODO: If Action found -> Call tool -> Append Observation
-            
-            # TODO: If Final Answer found -> Break loop
-            
-            steps += 1
-            
-        logger.log_event("AGENT_END", {"steps": steps})
-        return "Not implemented. Fill in the TODOs!"
+            result = self.llm.generate(conversation, system_prompt=system_prompt)
+            content = result.get("content") or ""
+            last_content = content
 
-    def _execute_tool(self, tool_name: str, args: str) -> str:
-        """
-        Helper method to execute tools by name.
-        """
-        for tool in self.tools:
-            if tool['name'] == tool_name:
-                # TODO: Implement dynamic function calling or simple if/else
-                return f"Result of {tool_name}"
-        return f"Tool {tool_name} not found."
+            thought = parse_thought(content)
+            final = parse_final_answer(content)
+            action = parse_action(content)
+
+            step_log = {
+                "step": steps,
+                "thought": thought,
+                "has_action": action is not None,
+                "has_final": final is not None,
+                "usage": result.get("usage"),
+                "latency_ms": result.get("latency_ms"),
+            }
+            if action:
+                step_log["action"] = {"tool": action[0], "args": action[1]}
+            logger.log_event("AGENT_STEP", step_log)
+
+            self.history.append({"step": steps, "llm_output": content, **step_log})
+
+            if final:
+                logger.log_event("AGENT_END", {"steps": steps + 1, "status": "final_answer"})
+                return final
+
+            if action:
+                tool_name, args_str = action
+                observation = self._execute_tool(tool_name, args_str)
+                conversation += f"{content.strip()}\nObservation: {observation}\n"
+            else:
+                conversation += f"{content.strip()}\n"
+                if steps >= self.max_steps - 1:
+                    break
+
+            steps += 1
+
+        logger.log_event("AGENT_END", {"steps": steps, "status": "max_steps_or_incomplete"})
+        if parse_final_answer(last_content):
+            return parse_final_answer(last_content)  # type: ignore
+        return (
+            last_content.strip()
+            or "Agent chưa hoàn thành trong số bước cho phép. Kiểm tra logs/ và format Action."
+        )
+
+    def _execute_tool(self, tool_name: str, args_str: str) -> str:
+        """Execute tools. @hanhvs: catalog tools; partner tools delegated when present."""
+        from src.agent.action_parser import parse_tool_args
+
+        pos, kw = parse_tool_args(args_str)
+        logger.log_event("TOOL_CALL", {"tool": tool_name, "args": args_str, "parsed_pos": pos, "parsed_kw": kw})
+
+        try:
+            if tool_name == "normalize_product":
+                query = str(pos[0]) if pos else args_str.strip('"')
+                return format_observation(normalize_product(query))
+
+            if tool_name == "get_reference_price":
+                name = str(pos[0]) if pos else ""
+                storage = kw.get("storage_gb")
+                if storage is not None:
+                    storage = int(storage)
+                return format_observation(get_reference_price(name, storage_gb=storage))
+
+            if tool_name == "score_condition":
+                if score_condition is None:
+                    return json.dumps(
+                        {
+                            "error": "score_condition chưa implement — @0infinitive0",
+                            "stub": True,
+                        },
+                        ensure_ascii=False,
+                    )
+                text = str(pos[0]) if pos else args_str
+                return format_observation(score_condition(text))
+
+            if tool_name == "search_comparable_listings":
+                if search_comparable_listings is None:
+                    return json.dumps(
+                        {
+                            "error": "search_comparable_listings chưa implement — @0infinitive0",
+                            "stub": True,
+                        },
+                        ensure_ascii=False,
+                    )
+                canonical = str(pos[0]) if pos else ""
+                tier = str(kw.get("tier") or (pos[1] if len(pos) > 1 else "good"))
+                return format_observation(search_comparable_listings(canonical, tier))
+
+            return json.dumps({"error": f"Unknown tool: {tool_name}"}, ensure_ascii=False)
+
+        except Exception as e:
+            logger.log_event("TOOL_ERROR", {"tool": tool_name, "error": str(e)})
+            return json.dumps({"error": str(e), "tool": tool_name}, ensure_ascii=False)

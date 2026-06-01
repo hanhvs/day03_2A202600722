@@ -174,3 +174,4 @@ src/tools/
 | Ngày | Người | Ghi chú |
 |------|--------|---------|
 | 2026-06-01 | — | Tạo plan v1 Colab, chủ đề giá thị trường theo tình trạng |
+| 2026-06-01 | @hanhvs | Hoàn thành H1–H7: catalog, agent, chatbot, factory, Colab notebook |
