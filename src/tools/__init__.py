@@ -1,5 +1,7 @@
 """Tool registry for PriceCheck Agent v1."""
 
+from src.tools.condition_scoring import score_condition
+from src.tools.listings_mock import search_comparable_listings
 from src.tools.product_catalog import normalize_product, get_reference_price
 
 # Tool metadata for LLM (all 4; partner implements score_condition + search_comparable_listings)
@@ -38,4 +40,6 @@ __all__ = [
     "TOOL_SPECS",
     "normalize_product",
     "get_reference_price",
+    "score_condition",
+    "search_comparable_listings",
 ]
