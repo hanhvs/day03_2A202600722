@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "description": "Mock catalog PriceCheck — chỉnh sửa thủ công hoặc tự cập nhật sau Final Answer của agent",
+  "updated_at": "2026-06-01T08:20:53.817588+00:00",
+  "products": [
+    {
+      "id": "iphone-13-128gb",
+      "canonical_name": "iPhone 13 128GB",
+      "category": "phone",
+      "aliases": [
+        "iphone 13",
+        "iphone13 128"
+      ],
+      "storage_gb": 128,
+      "reference_vnd": 12500000,
+      "market_observations": [
+        {
+          "recorded_at": "2026-06-01T08:20:53.817564+00:00",
+          "source": "agent_final_answer",
+          "tier": null,
+          "estimated_min_vnd": null,
+          "estimated_max_vnd": null,
+          "suggested_vnd": 8750000,
+          "listings_avg_vnd": null,
+          "user_query": "iPhone 13 128GB, pin 88%, màn ok, vỏ đẹp, đủ hộp sạc — giá bán lại?",
+          "final_answer_excerpt": "Chiếc iPhone 13 128GB của bạn, với tình trạng pin 88%, màn hình và vỏ đẹp, đầy đủ hộp sạc, có thể được định giá bán lại trong khoảng từ 8,750,000 VND đến 10,625,000 VND. Nên lưu ý rằng giá có thể thay đổi dựa trên thị trường và mong đợi riêng của người mua."
+        }
+      ],
+      "last_market_summary": {
+        "updated_at": "2026-06-01T08:20:53.817564+00:00",
+        "tier": null,
+        "estimated_min_vnd": null,
+        "estimated_max_vnd": null,
+        "suggested_vnd": 8750000,
+        "listings_avg_vnd": null,
+        "observation_count": 1
+      }
+    },
+    {
+      "id": "iphone-14-256gb",
+      "canonical_name": "iPhone 14 256GB",
+      "category": "phone",
+      "aliases": [
+        "iphone 14",
+        "iphone14 256"
+      ],
+      "storage_gb": 256,
+      "reference_vnd": 18900000,
+      "market_observations": []
+    },
+    {
+      "id": "samsung-galaxy-s23-256gb",
+      "canonical_name": "Samsung Galaxy S23 256GB",
+      "category": "phone",
+      "aliases": [
+        "s23",
+        "galaxy s23"
+      ],
+      "storage_gb": 256,
+      "reference_vnd": 14990000,
+      "market_observations": []
+    },
+    {
+      "id": "xiaomi-13t-256gb",
+      "canonical_name": "Xiaomi 13T 256GB",
+      "category": "phone",
+      "aliases": [
+        "xiaomi 13t",
+        "13t"
+      ],
+      "storage_gb": 256,
+      "reference_vnd": 10490000,
+      "market_observations": []
+    },
+    {
+      "id": "macbook-air-m1-256gb",
+      "canonical_name": "MacBook Air M1 256GB",
+      "category": "laptop",
+      "aliases": [
+        "macbook air m1",
+        "mba m1"
+      ],
+      "storage_gb": 256,
+      "reference_vnd": 22990000,
+      "market_observations": []
+    },
+    {
+      "id": "macbook-pro-14-m2-512gb",
+      "canonical_name": "MacBook Pro 14 M2 512GB",
+      "category": "laptop",
+      "aliases": [
+        "macbook pro m2",
+        "mbp 14 m2"
+      ],
+      "storage_gb": 512,
+      "reference_vnd": 42990000,
+      "market_observations": []
+    },
+    {
+      "id": "dell-xps-13-i7",
+      "canonical_name": "Dell XPS 13 i7 16GB",
+      "category": "laptop",
+      "aliases": [
+        "dell xps 13",
+        "xps 13"
+      ],
+      "storage_gb": 512,
+      "reference_vnd": 28500000,
+      "market_observations": []
+    },
+    {
+      "id": "sony-a7iii-body",
+      "canonical_name": "Sony A7III body",
+      "category": "camera",
+      "aliases": [
+        "sony a7iii",
+        "a7iii",
+        "a7 mark iii"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 32000000,
+      "market_observations": []
+    },
+    {
+      "id": "canon-eos-r6-mark-ii",
+      "canonical_name": "Canon EOS R6 Mark II body",
+      "category": "camera",
+      "aliases": [
+        "canon r6 ii",
+        "eos r6 mark ii"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 48500000,
+      "market_observations": []
+    },
+    {
+      "id": "ipad-air-5-64gb",
+      "canonical_name": "iPad Air 5 64GB WiFi",
+      "category": "tablet",
+      "aliases": [
+        "ipad air 5",
+        "ipad air m1"
+      ],
+      "storage_gb": 64,
+      "reference_vnd": 13990000,
+      "market_observations": []
+    },
+    {
+      "id": "airpods-pro-2",
+      "canonical_name": "AirPods Pro 2",
+      "category": "audio",
+      "aliases": [
+        "airpods pro 2",
+        "app2"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 5490000,
+      "market_observations": []
+    },
+    {
+      "id": "apple-watch-s8-45mm",
+      "canonical_name": "Apple Watch Series 8 45mm",
+      "category": "wearable",
+      "aliases": [
+        "apple watch s8",
+        "watch series 8"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 8990000,
+      "market_observations": []
+    },
+    {
+      "id": "ps5-slim",
+      "canonical_name": "PlayStation 5 Slim",
+      "category": "gaming",
+      "aliases": [
+        "ps5",
+        "playstation 5"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 12490000,
+      "market_observations": []
+    },
+    {
+      "id": "nintendo-switch-oled",
+      "canonical_name": "Nintendo Switch OLED",
+      "category": "gaming",
+      "aliases": [
+        "switch oled",
+        "nintendo switch"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 8290000,
+      "market_observations": []
+    },
+    {
+      "id": "logitech-mx-master-3s",
+      "canonical_name": "Logitech MX Master 3S",
+      "category": "accessory",
+      "aliases": [
+        "mx master 3s",
+        "logitech mx master"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 2490000,
+      "market_observations": []
+    },
+    {
+      "id": "dji-mini-3-pro",
+      "canonical_name": "DJI Mini 3 Pro",
+      "category": "drone",
+      "aliases": [
+        "dji mini 3 pro",
+        "mini 3 pro"
+      ],
+      "storage_gb": null,
+      "reference_vnd": 16990000,
+      "market_observations": []
+    },
+    {
+      "id": "kindle-paperwhite-11",
+      "canonical_name": "Kindle Paperwhite 11",
+      "category": "ereader",
+      "aliases": [
+        "kindle paperwhite",
+        "paperwhite 11"
+      ],
+      "storage_gb": 8,
+      "reference_vnd": 3790000,
+      "market_observations": []
+    },
+    {
+      "id": "asus-rog-zephyrus-g14",
+      "canonical_name": "ASUS ROG Zephyrus G14",
+      "category": "laptop",
+      "aliases": [
+        "rog g14",
+        "zephyrus g14"
+      ],
+      "storage_gb": 512,
+      "reference_vnd": 35990000,
+      "market_observations": []
+    }
+  ]
+}

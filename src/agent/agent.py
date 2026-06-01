@@ -8,6 +8,7 @@ from src.tools.product_catalog import (
     format_observation,
     get_reference_price,
     normalize_product,
+    update_catalog_from_agent_session,
 )
 
 # Partner tools — wired when modules exist (@0infinitive0)
@@ -25,10 +26,17 @@ except ImportError:
 class ReActAgent:
     """ReAct agent: Thought → Action → Observation → Final Answer."""
 
-    def __init__(self, llm: LLMProvider, tools: List[Dict[str, Any]], max_steps: int = 6):
+    def __init__(
+        self,
+        llm: LLMProvider,
+        tools: List[Dict[str, Any]],
+        max_steps: int = 6,
+        persist_catalog_updates: bool = True,
+    ):
         self.llm = llm
         self.tools = tools
         self.max_steps = max_steps
+        self.persist_catalog_updates = persist_catalog_updates
         self.history: List[Dict[str, Any]] = []
 
     def get_system_prompt(self) -> str:
@@ -95,12 +103,17 @@ Action: search_comparable_listings("iPhone 13 128GB", tier="good")
             self.history.append({"step": steps, "llm_output": content, **step_log})
 
             if final:
-                logger.log_event("AGENT_END", {"steps": steps + 1, "status": "final_answer"})
+                catalog_update = self._maybe_update_catalog(user_input, final)
+                logger.log_event(
+                    "AGENT_END",
+                    {"steps": steps + 1, "status": "final_answer", "catalog_update": catalog_update},
+                )
                 return final
 
             if action:
                 tool_name, args_str = action
                 observation = self._execute_tool(tool_name, args_str)
+                self.history[-1]["observation"] = observation
                 conversation += f"{content.strip()}\nObservation: {observation}\n"
             else:
                 conversation += f"{content.strip()}\n"
@@ -111,11 +124,24 @@ Action: search_comparable_listings("iPhone 13 128GB", tier="good")
 
         logger.log_event("AGENT_END", {"steps": steps, "status": "max_steps_or_incomplete"})
         if parse_final_answer(last_content):
-            return parse_final_answer(last_content)  # type: ignore
+            final = parse_final_answer(last_content)  # type: ignore
+            self._maybe_update_catalog(user_input, final)
+            return final
         return (
             last_content.strip()
             or "Agent chưa hoàn thành trong số bước cho phép. Kiểm tra logs/ và format Action."
         )
+
+    def _maybe_update_catalog(self, user_input: str, final_answer: str) -> Dict[str, Any]:
+        if not self.persist_catalog_updates:
+            return {"saved": False, "reason": "persist_disabled"}
+        try:
+            return update_catalog_from_agent_session(
+                user_input, self.history, final_answer, persist=True
+            )
+        except Exception as e:
+            logger.log_event("CATALOG_UPDATE_ERROR", {"error": str(e)})
+            return {"saved": False, "error": str(e)}
 
     def _execute_tool(self, tool_name: str, args_str: str) -> str:
         """Execute tools. @hanhvs: catalog tools; partner tools delegated when present."""

@@ -128,6 +128,9 @@ Day-3-Lab-Chatbot-vs-react-agent/
 │   └── V1_TASK_PLAN_COLAB.md       # Chia task team v1
 ├── report/                       # Template báo cáo nhóm / cá nhân
 ├── run_hanhvs_demo.py            # Demo local: chatbot + agent
+├── data/
+│   ├── products_catalog.json     # Mock SP + market_observations (cập nhật sau agent)
+│   └── README.md
 ├── logs/                         # Runtime (gitignored)
 ├── .env.example
 ├── README.md
@@ -167,7 +170,7 @@ Day-3-Lab-Chatbot-vs-react-agent/
 | `score_condition` | @0infinitive0 | Planned |
 | `search_comparable_listings` | @0infinitive0 | Planned |
 
-Catalog mock: điện thoại, laptop, máy ảnh, tablet, gaming, v.v. (~18 mục, giá VND tham chiếu).
+Catalog mock: **`data/products_catalog.json`** (~18 sản phẩm). Code đọc/ghi JSON; sau mỗi **Final Answer** agent append `market_observations` và `last_market_summary` (xem [data/README.md](../data/README.md)).
 
 ### 5.5 Observability (`src/telemetry/`)
 
